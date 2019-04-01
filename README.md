@@ -1,5 +1,5 @@
 # Assembly-code-PID-CONTROL
-Major Project in Electronics : Buck converter PID
+Major Project in Electronics : Buck converter PID.
 The purpose of this project is to program a microcontroller : PIC16F1789 in assembly code
 in order to manage the feedback loop of a buck converter.
 
