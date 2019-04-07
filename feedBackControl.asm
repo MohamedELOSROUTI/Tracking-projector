@@ -8,7 +8,9 @@
 
     processor 16f1789
     #include "config.inc"
-    ; Macros 
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Macro's ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
     CLEAR_FLAG_TMR1 macro
 	movlb 0x00
 	bcf   PIR1, 0 ; Clear interrupt flag
@@ -42,7 +44,7 @@
 	movlw b'01000000'
 	movwf counter
 	endm
-	
+        	
     COMPUTE_ERROR_CURRENT macro
  
 	movf ADRESH, 0
@@ -55,14 +57,16 @@
 	decf errCurrent+1,1
 	endm
 	
-    COMPUTE_up macro ; up = errCurrent * Kp, with Kp = 2
- 
-	rlf errCurrent+1,0
-	movwf up+1
-	rlf errCurrent, 0
+    COMPUTE_up macro ; up = errCurrent * Kp, with Kp = 0.5
+	
+	rrf errCurrent, 0
 	movwf up
+	rrf errCurrent, 0
+	movwf up+1
+	movlw b'10000000'
 	btfsc STATUS, C
-	bsf up+1,0
+	addwf up
+	
 	endm
 	
     COMPUTE_ui macro ; ui = errCurrent*Ki+ui, with Ki = 2^-4
@@ -131,44 +135,125 @@
 	movf ud+1,0
 	addwf upid+1,1
 	endm
+	
     UPDATE_ERROR_PREVIOUS macro
 	movf errCurrent, 0
 	movwf errPrevious
 	movf errCurrent+1, 0
 	movwf errPrevious+1
 	endm
-    ADJUST_upid macro ; make it between [0,2^10-1]
-	movlw b'00001000'
-	addwf upid+1, 1 ; now upid is in [0, 2^12-1]
-	; make it between [0,2^10-1] for use with pwm
-	rlf upid+1,1
-	rlf upid+1,1
-	rlf upid+1,1
-	rlf upid+1,1
-	movlw b'11110000'
-	andwf upid, 0
-	movwf ud ; again we use register ud here 
-	rrf ud,1
-	rrf ud,1
-	rrf ud,1
-	rrf ud,1
-	movf ud, 0
-	addwf upid+1,1
-	rlf upid,1
-	rlf upid,1
-	movlw b'00110000'
-	andwf upid, 1
-	endm
+
     
-    CONFIGURE_PWM macro
-	movlb 0x05
+    ADJUST_dutyPWM macro
+    ; newDuty = dutyPWM + upid
+    ; here ud is used as tmp variable : ud = dutyPWM
+	movlb 0x00
+	movf upid, 0
+	addwf dutyPWM,0
+	movwf ud
+	movf dutyPWM+1,0
+	movwf ud+1
 	movf upid+1,0
-	movwf CCPR2L ; MSB
+	btfsc STATUS, C
+	incfsz upid+1,0
+	addwf ud+1
+    
+    ; test if result ud is less than 0 => saturate the duty at 0	
+	btfss ud+1, 7 ; test MSB : sign bit 
+	goto SaturateMin ; ud<0
+	
+    ; test if result ud is > 536 (max duty cycle value counter) : 
+    ; the idea is to compute up=536(=4*(PR2+1))-ud , up : another tmp variable
+    ; and see if up is positive or negative : if negative : saturates at 536
+	movf ud+1,0
+	subwf maxDuty+1, 0
+	movwf up+1
+	movf ud, 0
+	subwf maxDuty, 0
+	movwf up
+	btfss STATUS, C
+	decf up+1
+    
+    ; now test if negative
+	btfss up+1,7 ; test sign bit
+	goto SaturateMax ; because negative : ud > 536
+    ; Not negative : 536>=ud>=0 : ud n'est pas surement sur 8 bits
+	movf ud, 0
+	movwf dutyPWM
+	movf ud+1,0
+	movwf dutyPWM+1
+    
+    ; UPDATE CCPR2L:DCXB
+    
+    ; Configure DCXB bits
+	movlw b'00000011'
+	andwf dutyPWM, 0
+	movwf ud
+	rlf ud, 1
+	rlf ud, 1
+	rlf ud, 1
+	rlf ud, 1
+	movlb 0x05
 	movlw b'00001111'
 	andwf CCP2CON, 1
-	movf upid, 0
+	movf ud, 0
 	addwf CCP2CON, 1
+    
+    ; Configure CCPR2L bits
+	movlb 0x00
+	movf dutyPWM, 0
+	movwf ud
+	rrf ud, 1
+	rrf ud, 1
+	movlb 0x05
+	movf ud, 0
+	movwf CCPR2L
+	movlb 0x00
+	movf dutyPWM+1, 0
+	movwf ud
+	
+	rlf ud, 1
+	rlf ud, 1
+	rlf ud, 1
+	rlf ud, 1
+	rlf ud, 1
+	rlf ud, 1
+	
+	movf ud, 0
+	movlb 0x05
+	addwf CCPR2L
+	retfie
+    
+SaturateMax: ;ud > 536
+    ; dutyPWM = maxDuty = 536
+	movf maxDuty, 0
+	movwf dutyPWM
+	movf maxDuty+1, 0
+	movwf dutyPWM+1
+    
+    ; Configure DCXB bits 
+	movlb 0x05   ; 
+	movlw b'00001100'
+	movwf CCP2CON
+	
+    ; Configure CCPR2L bits
+	movlw b'10000110'
+	movwf CCPR2L
+	retfie
+	
+SaturateMin: ; cas ou ud < 0 : saturates at 0
+    ; dutyPWM = minDuty = 0
+	clrf dutyPWM
+	clrf dutyPWM+1
+	movlb 0x05
+	clrf CCPR2L
+	movlb b'00001100'
+	movwf CCP2CON
+	retfie
 	endm
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; END OF MACRO's ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
     ; Start execution of the program by the microcontroller here
     org 0x00
     nop
@@ -200,11 +285,9 @@ ADC_interrupt:
     COMPUTE_up
     COMPUTE_ui
     COMPUTE_ud
-    COMPUTE_upid ; upid is a variable between [-1925, 273] ; need to be adjusted (positive+2^11) -> [0, 2^12-1]-> [0, 2^10-1] (for pwm)
+    COMPUTE_upid  
     UPDATE_ERROR_PREVIOUS ; errPrevious = errCurrent
-    ADJUST_upid ; upid is adjusted now : between  [0, 2^10-1] but all shifted to the left in order to equalize it easily to pwm registers
-    CONFIGURE_PWM ; adjust PWM according to upid
-    RESET_TMR1_SAMPLING
+    ADJUST_dutyPWM ; with saturation
     retfie
 
     ; Beginning of the program here
@@ -254,7 +337,7 @@ initialisation:
 	movlb 0x05
 	movlw b'00001100' ; set PWM mode and the PWM duty cycle LSB to '00'
 	movwf CCP2CON
-	movlw b'00000000' ; initialise the duty cycle to 0
+	movlw b'01000011' ; initialise the duty cycle to 0.5 => counter = b'100001100'
 	movwf CCPR2L
 	
 	; Setup TMR1 for sampling process
@@ -273,6 +356,16 @@ initialisation:
 	movwf PIE1
 	bsf INTCON, 7 ; Enables all active interrupts
 	bsf INTCON, 6 ; Enables all active peripheral interrupts
+	; General Purpose ram Bank 0 for storing current PWM value of 2 bytes
+	movlb 0x00
+	cblock 20h	
+	dutyPWM : 2
+	maxDuty : 2 ; maximum value of the PWM counter = 4*(PR2+1) = 536
+	endc
+	movlw b'00011000' 
+	movwf maxDuty
+	movlw b'00000010'
+	movwf maxDuty+1
 	
 	; Variables declaration for PID computation : Common Ram location at 70h
 	cblock 70h
@@ -307,12 +400,15 @@ initialisation:
 	andwf ud+1,1
 	andwf upid, 1
 	andwf upid+1,1
-	
+	return 
 	
 main_loop:
     nop
     goto main_loop
     END
     
-    
-	
+    ;; Prochaine étape : débuggage du code :D
+    ;; mettre une valeur dans adresh:addreshl pour simuler vout
+    ;; regarder la valeur du dutyPWM (voir si elle varie bien dans le bon sens)
+    ;; A la place du dutyPWM on peut voir le registre CCPR2L : 8 bits poids for pwm
+    ;; ensuite mettre vout à vref et verifie que dutyPWM ne varie plus (ou tres tres peu pour ne plus varier arpès)
