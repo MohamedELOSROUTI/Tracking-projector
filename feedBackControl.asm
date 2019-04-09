@@ -46,7 +46,7 @@
 	endm
         	
     COMPUTE_ERROR_CURRENT macro
- 
+	movlb 0x01
 	movf ADRESH, 0
 	subwf ref+1,0
 	movwf errCurrent+1
@@ -58,49 +58,80 @@
 	endm
 	
     COMPUTE_up macro ; up = errCurrent * Kp, with Kp = 0.5
-	
+        btfss errCurrent, 7
+	goto posDivup
+	bsf STATUS, C
+	rrf errCurrent+1, 0
+	movwf up+1
 	rrf errCurrent, 0
 	movwf up
-	rrf errCurrent, 0
+	goto compute_ui
+posDivup:
+        bcf STATUS, C
+	rrf errCurrent+1, 0
 	movwf up+1
-	movlw b'10000000'
-	btfsc STATUS, C
-	addwf up
-	
+	rrf errCurrent, 0
+	movwf up
 	endm
 	
     COMPUTE_ui macro ; ui = errCurrent*Ki+ui, with Ki = 2^-4
 		     ; use ud as tmp variable :D (not enough common RAM) 
 	; ud = errCurrent*Ki
-	rrf errCurrent, 0
+compute_ui:
+	movf errCurrent, W
 	movwf ud
-	rrf ud, 1
-	rrf ud, 1
-	rrf ud, 1
-	rlf errCurrent+1, 0
+	movf errCurrent+1, W
 	movwf ud+1
-	rlf ud+1, 1
-	rlf ud+1, 1
-	rlf ud+1, 1
-	movf ud+1, 0
-	addwf ud, 1
-	rrf errCurrent+1, 0
-	movwf ud+1
-	rrf ud+1,1
-	rrf ud+1,1
-	rrf ud+1,1
-	
+	btfss ud+1, 7
+	goto posDiv
+	bsf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bsf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bsf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bsf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bcf STATUS, C
 	; ui=ud+ui
-	movf ud, 0
-	addwf ui, 1
+	movf ud, W
+	addwf ui, F
+	movf ud+1, W
 	btfsc STATUS, C
-	incf ui+1,1
-	movf ud+1,0
-	addwf ui+1,1
+	incfsz ud+1, W
+	addwf ui+1, F
+	goto compute_ud
+posDiv:
+	bcf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bcf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bcf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bcf STATUS, C
+	rrf ud+1, F
+	rrf ud, F
+	bcf STATUS, C
+	; ui=ud+ui
+	movf ud, W
+	addwf ui, F
+	movf ud+1, W
+	btfsc STATUS, C
+	incfsz ud+1, W
+	addwf ui+1, F
+	
 	endm
 	
     COMPUTE_ud macro ; ud = Kd*(errCurrent-errPrevious)
 	; compute first ud = errCurrent-errPrevious
+compute_ud:
 	movf errPrevious+1, 0
 	subwf errCurrent+1, 0
 	movwf ud+1
@@ -111,10 +142,9 @@
 	decf ud+1,1
 	
 	; Now make ud <- 2ud
-	rlf ud+1, 1
+	bcf STATUS, C
 	rlf ud, 1
-	btfsc STATUS, C
-	incf ud+1, 1
+	rlf ud+1,1
 	endm
 	
     COMPUTE_upid macro ; upid = up+ui+ud
@@ -159,7 +189,7 @@
 	addwf ud+1
     
     ; test if result ud is less than 0 => saturate the duty at 0	
-	btfss ud+1, 7 ; test MSB : sign bit 
+	btfsc ud+1, 7 ; test MSB : sign bit 
 	goto SaturateMin ; ud<0
 	
     ; test if result ud is > 536 (max duty cycle value counter) : 
@@ -175,7 +205,7 @@
 	decf up+1
     
     ; now test if negative
-	btfss up+1,7 ; test sign bit
+	btfsc up+1,7 ; test sign bit
 	goto SaturateMax ; because negative : ud > 536
     ; Not negative : 536>=ud>=0 : ud n'est pas surement sur 8 bits
 	movf ud, 0
@@ -189,10 +219,15 @@
 	movlw b'00000011'
 	andwf dutyPWM, 0
 	movwf ud
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	movlb 0x05
 	movlw b'00001111'
 	andwf CCP2CON, 1
@@ -203,22 +238,30 @@
 	movlb 0x00
 	movf dutyPWM, 0
 	movwf ud
+	bcf STATUS, C
 	rrf ud, 1
+	bcf STATUS, C
 	rrf ud, 1
+	bcf STATUS, C
 	movlb 0x05
 	movf ud, 0
 	movwf CCPR2L
 	movlb 0x00
 	movf dutyPWM+1, 0
 	movwf ud
-	
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
+	bcf STATUS, C
 	rlf ud, 1
-	
+	bcf STATUS, C
 	movf ud, 0
 	movlb 0x05
 	addwf CCPR2L
@@ -288,6 +331,7 @@ ADC_interrupt:
     COMPUTE_upid  
     UPDATE_ERROR_PREVIOUS ; errPrevious = errCurrent
     ADJUST_dutyPWM ; with saturation
+
     retfie
 
     ; Beginning of the program here
@@ -362,11 +406,16 @@ initialisation:
 	dutyPWM : 2
 	maxDuty : 2 ; maximum value of the PWM counter = 4*(PR2+1) = 536
 	endc
+	
 	movlw b'00011000' 
 	movwf maxDuty
 	movlw b'00000010'
 	movwf maxDuty+1
 	
+	movlw b'00001100'  
+	movwf dutyPWM
+	movlw b'00000001'
+	movwf dutyPWM+1
 	; Variables declaration for PID computation : Common Ram location at 70h
 	cblock 70h
 	errCurrent   : 2 ; 2 bytes for the error representation (err = ref-vout)
