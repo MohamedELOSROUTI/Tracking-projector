@@ -2,9 +2,7 @@
 ;        Feedback Control of the buck converter	              ;
 ;							      ;
 ;	      Kp = 0.5, Ki = 0.0625, Kd = 2                   ;
-;                                                             ;
-;	                  				      ;
-;                                                             ;
+;                                			      ;
 ; *********************************************************** ;
 
     processor 16f1789
