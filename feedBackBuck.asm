@@ -1,9 +1,9 @@
 ; *********************************************************** ;
-;                           BLINKY			      ;
+;        Feedback Control of the buck converter	              ;
 ;							      ;
-;			 Test of the ADC                      ;
+;	      Kp = 0.5, Ki = 0.0625, Kd = 2                   ;
 ;                                                             ;
-;	    INFO0064 - Embedded Systems - Lab 3               ;
+;	                  				      ;
 ;                                                             ;
 ; *********************************************************** ;
 
