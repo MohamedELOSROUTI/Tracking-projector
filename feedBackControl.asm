@@ -355,7 +355,7 @@ initialisation:
 		
 	; Configuration of system clock 
 	movlb 0x01
-	movlw b'01111010' ; Configure internal clock to 16 Mhz (in order to get the best PWM resolution : here 9 bits ) 
+	movlw b'01101010' ; Configure internal clock to 16 Mhz (in order to get the best PWM resolution : here 9 bits ) 
 	movwf OSCCON
 	movlw b'00000000' ; Oscillator module must run at the facory calibrated frequency
 	movwf OSCTUNE
@@ -376,7 +376,7 @@ initialisation:
 	
 	; Setup PWM 
 	movlb 0x00
-	movlw b'10000101'; set PR2 = 133 : resolution of 9 bits and Ts = 30 kHz
+	movlw b'000100001'; set PR2 = 133 : resolution of 9 bits and Ts = 30 kHz
 	movwf PR2
 	movlb 0x05
 	movlw b'00001100' ; set PWM mode and the PWM duty cycle LSB to '00'
@@ -456,8 +456,8 @@ main_loop:
     goto main_loop
     END
     
-    ;; Prochaine étape : débuggage du code :D
-    ;; mettre une valeur dans adresh:addreshl pour simuler vout
+    ;; Prochaine ?tape : d?buggage du code :D
+    ;; mettre une valeur dans adresch:addreshl pour simuler vout
     ;; regarder la valeur du dutyPWM (voir si elle varie bien dans le bon sens)
     ;; A la place du dutyPWM on peut voir le registre CCPR2L : 8 bits poids for pwm
-    ;; ensuite mettre vout à vref et verifie que dutyPWM ne varie plus (ou tres tres peu pour ne plus varier arpès)
+    ;; ensuite mettre vout ? vref et verifie que dutyPWM ne varie plus (ou tres tres peu pour ne plus varier arp?s)
