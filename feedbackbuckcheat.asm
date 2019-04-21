@@ -1,18 +1,14 @@
-
-
-
-; ************************************************************;
+; *********************************************************** ;
+;        Feedback Control of the buck converter	              ;
 ;							      ;
-;	    Feedback Control of the buck converter	      ;    
-;		Kp = 0.5, Ki = 0.0625, Kd = 2    	      ;
-;	    Oh... des multiples de deux, on se demande pq ... ;
-;							      ;
-; ************************************************************;
+;	      Kp = 0.5, Ki = 0.0625, Kd = 2                   ;
+;                                			      ;
+; *********************************************************** ;
 
     processor 16f1789
-    #include "config.inc"
-    #include "16bits.inc"
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Macro's ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    #include 	"config3.inc"
+    #include    "16bits.inc"
+    
     
     CLEAR_FLAG_TMR1 macro
 	movlb 0x00
@@ -43,44 +39,28 @@
 	endm
 	
     RESET_COUNTER macro
- 
 	movlw b'01000000'
 	movwf counter
 	endm
-    
-    ADJUST_dutyPWM macro
-	movlb 0x01
-	COMP16 ADRESL, ref
-	btfss STATUS, C ; if C = 1 ADRES>= ref
-	goto INCREASE_DUTY
-	movlb 0x05
-	DEC16 CCPR2L
-	retfie
-    INCREASE_DUTY:
-	movlb 0x05
-        INC16 CCPR2L
-	retfie
-	endm
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; END OF MACRO's ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    
-    ; Start execution of the program by the microcontroller here
-    org 0x00
-    nop
-    goto start
-    
-    ; Interrupt routine 
+; That is where the MCU will start executing the program (0x00)
+	org 	0x00
+	nop
+	goto    start		    ; jump to the beginning of the code
+
+; Interrupt routine	
     org 0x04
     movlb 0x00
     btfss PIR1, 0 ; test if interrupt flag of timer 1 is set
     goto ADC_interrupt
     CLEAR_FLAG_TMR1
-    RESET_TMR1_SAMPLING
+    ;RESET_TMR1_SAMPLING
     RESET_COUNTER
     ADC_ON
 WaitAquisition:
     decf counter, 1
     btfss STATUS, 2 ; test Zero bit : if counter == 0 skip next instruction
     goto WaitAquisition 
+    movlb 0x01
     bsf   ADCON0, 1 ; Start an ADC conversion cycle
 Conversion:
     btfsc ADCON0, 1 ; is conversion done ?
@@ -91,62 +71,59 @@ ADC_interrupt:
     retfie
     CLEAR_FLAG_ADC
     ADC_OFF
-    ADJUST_dutyPWM ; with saturation
+    movlb 0x01
+    ;COMP16 ADRESL, ref
+    MOVLW   b'00000001'             ;  Compare the High Byte First
+    SUBWF  ADRESH, W
+    BTFSS  STATUS, Z              ;  If Result of High Byte Compare
+    GOTO   Skip                   ;   is Equal to Zero, Then Check
+    MOVLW   b'00010000'          ;   the Second
+    SUBWF  ADRESL, W
+    Skip: 
+    btfss STATUS, C ; if C = 1 ADRES>= ref
+    goto INCREASE_DUTY
+    movlb 0x05
+    DEC16 CCPR2L
     retfie
-    
-
-    ; Beginning of the program here
+   
+INCREASE_DUTY:
+    movlb 0x05
+    INC16 CCPR2L
+    retfie ; with saturation
+	
+;BEGINNING OF THE PROGRAM
 start:
-	call initialisation 
-	goto main_loop
-	
+	call	initialisation      ; initialisation routine configuring the MCU
+	goto	main_loop           ; main loop
+
+;INITIALISATION
 initialisation:
-	; Configure port for PWM output : PORT C
-	movlb 0x01
-	bcf TRISC, 1 ; make port RC1 (CCP2 pin) as output
-	bcf LATC, 1 ; initialise output RC1 = 0
-	
-	; Configure port for analog to digital conversion : PORT D
+    ; configure clock
+    ;configuration of the GPIO
+    
+	; Configure PORTD
 	movlb 0x01
 	bsf TRISD, 1 ; make port RD1 as input 
 	movlb 0x03
 	bsf ANSELD, 1 ; make port RD1 as analog input
 	movlb 0x04
 	bcf WPUD, 1 ; disable weak pull-up on RD1
-		
-	; Configuration of system clock 
-	movlb 0x01
-	movlw b'01111010' ; Configure internal clock to 16 Mhz (in order to get the best PWM resolution : here 9 bits ) 
-	movwf OSCCON
-	movlw b'00000000' ; Oscillator module must run at the facory calibrated frequency
-	movwf OSCTUNE
 	
-	; ADC parameters
-	
-	movlb 0x01
-	movlw b'11010100' ; use channel 21 + 10 bits conversion + 2's representation :D
-	movwf ADCON0
-	movlw b'01000000' ; Vref+ and Vref- to VDD, VSS, ADC conversion clock = Fosc/4, sign magnitude result
-	movwf ADCON1
-	
-	; Configure TMR2 for use with PWM
-	movlb 0x00
-	bcf PIR1, 1 ; clear TMR2 interrupt flag 
-	movwf b'00000100' ; prescalar = 1, postscalar = 1:1, set timer2 on
-	movwf T2CON
-	
-	; Setup PWM 
-	movlb 0x00
-	movlw b'10000101'; set PR2 = 133 : resolution of 9 bits and Ts = 30 kHz
-	movwf PR2
-	movlb 0x05
-	movlw b'00001100' ; set PWM mode and the PWM duty cycle LSB to '00'
-	movwf CCP2CON
-	movlw b'01000011' ; initialise the duty cycle to 0.5 => counter = b'100001100'
-	movwf CCPR2L
-	
-	; Setup TMR1 for sampling process
-	
+	; Configure PORTC
+	movlb	0x01
+	clrf	TRISC ; All pins of PORTC are output (including RC2)
+	movlb	0x02
+	movlw	b'00000100' ;RC2 =0 while RC0..RC7=0
+	movwf	LATC
+
+    ;configuration of clock - ? frequency - ? source
+	movlb	0x01
+	movlw	b'01111110'
+	movwf	OSCCON		    ; configure oscillator (cf datasheet SFR OSCCON)
+	movlw	b'00000000'	    
+	movwf	OSCTUNE		    ; configure oscillator (cf datasheet SFR OSCTUNE)
+    
+    ; Configure + initialize TMR1
 	movlb 0x00
 	movlw b'11111011' ; TMR1 = 65268 in order to have overflow after 267 ins
 	movwf TMR1H       ; The overflow frequency corresponds to 15 Khz for the sampling frequency : T = 2*Ts
@@ -155,13 +132,42 @@ initialisation:
 	movlw b'00000001' ; Prescaler 1:1 + enable timer 1
 	movwf T1CON
 	
-	; Interrupt declaration of timer 1 + Enabling ADC interrupt
+	; Interrupt declaration for TMR1
+    
+	movlb	0x01
+	movlw	b'01000001' ; + Enables the ADC interrupt
+	movwf	PIE1
+	bsf	INTCON, 7
+	bsf	INTCON, 6
+	
+	
+	; Configure TMR2 for use with PWM module
+	movlb	0x00
+	bcf	PIR1,1 ; clear TMR2IF interrupt flag bit of the PIR register
+	movlw	b'00000100'
+	movwf	T2CON ; 1:1 postsclaller and 1 prescaler
+	
+	; Setup PWM
+	
+        movlb	0x00
+        movlw	b'10000101' ;66
+        movwf	PR2
+        movlb	0x05
+        movlw	b'00001100' ; set PWM mode and the PWM duty cycle Least significant bits '00'
+        movwf	CCP2CON
+	movlw	b'01000011'
+	movwf	CCPR2L      ; initialize the duty cycle to 0
+	; ADC parameters
+	
 	movlb 0x01
-	movlw b'01000001' ; Enables TMR1 overflow interrupt and ADC interrupt
-	movwf PIE1
-	bsf INTCON, 7 ; Enables all active interrupts
-	bsf INTCON, 6 ; Enables all active peripheral interrupts
-	; General Purpose ram Bank 0 for storing current PWM value of 2 bytes
+	movlw b'11000000' ; use channel 21 + 10 bits conversion + 2's representation :D
+	movwf ADCON0
+	movlw b'11000000' ; Vref+ and Vref- to VDD, VSS, ADC conversion clock = Fosc/4, sign magnitude result
+	movwf ADCON1
+	;movlw b'00001110'
+	;movwf ADCON2
+; General Purpose ram Bank 0 for storing current PWM value of 2 bytes
+	
 	; Variables declaration for PID computation : Common Ram location at 70h
 	cblock 70h
 	ref          : 2 ; 2 bytes is enough for ref : = 273 = 111h = b'0000000100010001'
@@ -169,25 +175,23 @@ initialisation:
 	endc
 	
 	; Set the reference to 442h
-	movlw b'00010001'
+	movlw b'00010000'  ; 100010000
 	movwf ref ; Lower byte
 	movlw b'00000001'
 	movwf ref+1 ; Upper byte
 	
-	; Initialize counter 
-	movlw b'01000000' ; 64
+	; Initialize counter  
+	movlw b'01100100' ; 64
 	movwf counter
 	; Initialize all variables to 0
-
+	
 	return 
 	
+
+;MAIN LOOP
 main_loop:
-    nop
-    goto main_loop
-    END
     
-    ;; Prochaine étape : débuggage du code :D
-    ;; mettre une valeur dans adresh:addreshl pour simuler vout
-    ;; regarder la valeur du dutyPWM (voir si elle varie bien dans le bon sens)
-    ;; A la place du dutyPWM on peut voir le registre CCPR2L : 8 bits poids for pwm
-    ;; ensuite mettre vout à vref et verifie que dutyPWM ne varie plus (ou tres tres peu pour ne plus varier arpès)
+    nop
+    goto    main_loop
+    END
+
