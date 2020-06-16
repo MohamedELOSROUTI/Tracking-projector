@@ -1,11 +1,11 @@
 /*
  * File:   Int_Project.c
- * Author: Martin Spits
+ * Author: Martin Spits, Mohamed El Osrouti
  *
  * Created on 24 avril 2019, 21:33  
  */
 
-//TIMER0 => Utilisé comme une interupt : Fréquence d'overflow = fréquence de correction du buck
+//TIMER0 => UtilisÃ© comme une interupt : FrÃ©quence d'overflow = frÃ©quence de correction du buck
 //TIMER1 => CCP1 : Utiliser comme compteur pour calculer distance avec CCP1 en capture mode
 //TIMER2 => CCP2 et 3 : Utiliser pour set le PWM freq
 
@@ -228,7 +228,7 @@ void main() {
     //PWM Motor
     APFCON2bits.CCP3SEL = 0; // 1 : RB5    0 : RE0
     CCP3CON = 0b00001111;
-    CCPR3L = 30; // pwm de 0 au départ
+    CCPR3L = 30; // pwm de 0 au dÃ©part
 
     // CAPTURE US
     T1CON = 0b00010001; // Fosc/4   Prescale de 2 pour pouvoir prendre toute la pulse
