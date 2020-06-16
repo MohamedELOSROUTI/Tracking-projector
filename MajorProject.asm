@@ -1,6 +1,6 @@
 ; *********************************************************** ;
 ;			Final Project	                      ;
-;							      ;         			      
+;	         Author : Mohamed El Osrouti	              ;         			      
 ; *********************************************************** ;
 
     processor 16f1789
@@ -211,7 +211,7 @@ initialisation:
     movlw b'00010001' ; Prescaler 1:2 + disable initially timer 1 + works at Fosc/4 = 16/4 = 4Mhz
     movwf T1CON	  ; Permet de prendre toute la pulse
     banksel T1CON
-    bcf T1CON, TMR1ON ; le timer 1 commence à compter
+    bcf T1CON, TMR1ON ; le timer 1 commence Ã  compter
 ; Setup TMR0
     banksel TMR0
     clrf TMR0
