@@ -23,17 +23,21 @@ The buck converter powers the H-bridge, the actuators, the sensors and the micro
 
 ## 2. Description of the tracking projector
 
+
 The aim of the projector is to track a moving person in a room. For that, it needs to know its location. Two symetric ultrasound sensors are constantly measuring the distances between the person and the spotlight. Those informations are transmitted to the microcontroller. Let's assume that :
 
 - d<sub>1</sub> is the distance between the left US sensor and the spotlight.
 - d<sub>2</sub> is the distance between the right US sensor and the spotlight.
+<p align="center">
+  <img src="https://i.imgur.com/xCHSd6d.png" alt="Image" height="300" width="300" />
+</p>
+
 
 The CPU is in charge of computing the difference between the two distances (d<sub>1</sub> and d<sub>2</sub>). According to the sign of the difference, the microcontroller will adjust the direction of rotation of the DC motor. This way, the person remains spotted by the projector if the person moves around it. 
 
 The CPU will always try to keep d<sub>1</sub>-d<sub>2</sub> as close as possible to 0 by adjusting the position of the spotlight ! Furthermore, the micrcontroller knows the angle of the shaft thanks to its angular sensor.
 
 The H-Bridge allows to control the direction of rotation of the DC motor. Furhermore, a pwm input voltage allows to control its rotation speed.
-
 
 ## 3. Final implementation 
 <p align="center">
