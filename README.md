@@ -29,7 +29,7 @@ The aim of the projector is to track a moving person in a room. For that, it nee
 - d<sub>1</sub> is the distance between the left US sensor and the spotlight.
 - d<sub>2</sub> is the distance between the right US sensor and the spotlight.
 <p align="center">
-  <img src="https://i.imgur.com/xCHSd6d.png" alt="Image" height="300" width="300" />
+  <img src="https://i.imgur.com/xCHSd6d.png" alt="Image" height="400" width="400" />
 </p>
 
 
