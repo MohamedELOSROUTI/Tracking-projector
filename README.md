@@ -1,6 +1,20 @@
 # Major Project in Electronics : Buck converter PID and Projector tracking.
 ## Introduction
-
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+tex2jax: {
+inlineMath: [['$','$'], ['\\(','\\)']],
+processEscapes: true},
+jax: ["input/TeX","input/MathML","input/AsciiMath","output/CommonHTML"],
+extensions: ["tex2jax.js","mml2jax.js","asciimath2jax.js","MathMenu.js","MathZoom.js","AssistiveMML.js", "[Contrib]/a11y/accessibility-menu.js"],
+TeX: {
+extensions: ["AMSmath.js","AMSsymbols.js","noErrors.js","noUndefined.js"],
+equationNumbers: {
+autoNumber: "AMS"
+}
+}
+});
+</script>
 As part of my master's course, we had to design, test and build a projector able to detect a person in a room and track its movement. This project involves electronics skills related to power electronics and embedded systems. 
 
 The power electronics part concerns the conception of a DC buck converter that has to power all the embedded system.
@@ -39,4 +53,5 @@ The H-Bridge allows to control the direction of rotation of the DC motor. Furher
 <p align="center">
   <img src="https://i.imgur.com/qQMkzd6.png" />
 </p>
-See Final_Report___Major_project.pdf for more information about the code and the analog implementation (PCB design, pseudo-codes, ...).
+
+See **FinalReportMajorproject.pdf** for more information about the code and the analog implementation (PCB design, pseudo-codes, ...).
