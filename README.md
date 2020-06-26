@@ -18,7 +18,6 @@ The system will consist of the spotlight and its support and the reference will 
 
 Then the buck converter that will be entirely build and implemented will supply the H-bridge which will drive the motor. The two ultrasonic sensors will compute the distance between them and the moving body and the microcontroller will control the buck converter and control the DC motor in order to track the moving person thanks to the data sent by the ultrasonic sensors.
 
-Here is a small block diagram : 
-![Block Diagram](https://i.imgur.com/j2ZA0AG.png)
+Here's the final implementation 
 
-
+![](https://i.imgur.com/qQMkzd6.png)
